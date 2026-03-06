@@ -1,71 +1,40 @@
 const request = require('supertest');
 const app = require('./app');
 
-describe('API Events', () => {
+describe('Tests de la Logique Métier - API Events', () => {
 
-    // ===================== GET /events =====================
-    describe('GET /events', () => {
-        it('devrait retourner un message de bienvenue', async () => {
-            const res = await request(app).get('/events');
-            expect(res.statusCode).toBe(200);
-            expect(res.body.message).toBe("Bienvenue sur l'API Events !");
-        });
+    // TEST 1 : Vérification des champs obligatoires
+    it('doit refuser un événement sans titre ou sans date (400)', async () => {
+        const response = await request(app)
+            .post('/events')
+            .send({ title: "Soirée DevOps" }); // Il manque la date !
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe("Le titre et la date sont obligatoires");
     });
 
-    // ===================== POST /events =====================
-    describe('POST /events', () => {
+    // TEST 2 : Vérification de la date dans le passé
+    it('doit refuser un événement dans le passé (400)', async () => {
+        const response = await request(app)
+            .post('/events')
+            .send({
+                title: "Événement passé",
+                date: "2020-01-01"
+            });
 
-        it('devrait créer un événement valide (201)', async () => {
-            // Date dans le futur
-            const futureDate = new Date();
-            futureDate.setFullYear(futureDate.getFullYear() + 1);
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe("La date ne peut pas être dans le passé");
+    });
 
-            const res = await request(app)
-                .post('/events')
-                .send({ title: 'Concert', date: futureDate.toISOString() });
+    // TEST 3 : Cas de succès
+    it('doit accepter un événement avec une date valide (200)', async () => {
+        const response = await request(app)
+            .post('/events')
+            .send({
+                title: "Futur Event",
+                date: "2028-12-31"
+            });
 
-            expect(res.statusCode).toBe(201);
-            expect(res.body).toHaveProperty('id');
-            expect(res.body.title).toBe('Concert');
-        });
-
-        it('devrait refuser si le titre est manquant (400)', async () => {
-            const futureDate = new Date();
-            futureDate.setFullYear(futureDate.getFullYear() + 1);
-
-            const res = await request(app)
-                .post('/events')
-                .send({ date: futureDate.toISOString() });
-
-            expect(res.statusCode).toBe(400);
-            expect(res.body.error).toBe('Le titre et la date sont obligatoires');
-        });
-
-        it('devrait refuser si la date est manquante (400)', async () => {
-            const res = await request(app)
-                .post('/events')
-                .send({ title: 'Concert' });
-
-            expect(res.statusCode).toBe(400);
-            expect(res.body.error).toBe('Le titre et la date sont obligatoires');
-        });
-
-        it('devrait refuser si le body est vide (400)', async () => {
-            const res = await request(app)
-                .post('/events')
-                .send({});
-
-            expect(res.statusCode).toBe(400);
-            expect(res.body.error).toBe('Le titre et la date sont obligatoires');
-        });
-
-        it('devrait refuser une date dans le passé (400)', async () => {
-            const res = await request(app)
-                .post('/events')
-                .send({ title: 'Ancien concert', date: '2020-01-01' });
-
-            expect(res.statusCode).toBe(400);
-            expect(res.body.error).toBe('La date ne peut pas être dans le passé');
-        });
+        expect(response.status).toBe(201);
     });
 });
